@@ -6,8 +6,7 @@
         Outputs: A Promise which resolves containing the nested Object format, or rejects with an error message.
 */
 
-// TODO service workerify this stuff
-
+// TODO service workerify this stuff?
 import * as Utils from './utils.js';
 
 
@@ -117,7 +116,7 @@ function convertObject(data, config) {
                 errorMessage = `Invalid node given, "${childrenAttr}" property must point to an Array or null.`;
             }
 
-            // Record the children in the 
+            // Record the children in the
             subtreeRoot[childrenAttr] = subtreeRoot[childrenAttr];
 
             if (errorMessage) {
@@ -133,6 +132,5 @@ function convertObject(data, config) {
         }
     });
 }
-
 
 export default convertData;
