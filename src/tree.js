@@ -1,5 +1,4 @@
-var EDGE_RIGHT = 0,
-    EDGE_LEFT = 1;
+import * as Edges from './edge.js';
 
 function Tree(parent, parentElement, config, data) {
     this.parent = parent;
@@ -31,9 +30,9 @@ function Tree(parent, parentElement, config, data) {
     if (children && children.length) {
         this.addChildren(children);
 
-    // Otherwise we are a leaf node; inform our parents
-    } else if (parent) {
-        parent.addLeaf(this);
+    // Otherwise we are a leaf node add ourselves to our leaves dict and inform our parents of this fact
+    } else {
+        this.addLeaf(this);
     }
 };
 
@@ -118,106 +117,27 @@ Tree.prototype.removeLeaf = function(leaf) {
         this.parent.removeLeaf(leaf);
     }
 };
-
-/*  Creates a listing of nodes below this subtree that form one of the edges of the tree
-*/
-Tree.prototype.createEdge = function(side) {
-    var edge = [],
-        leaves = Array.from(this.leaves),
-        currentIdx = 0;
-
-    // Sort descending by level
-    leaves.sort(function(leafA, leafB) { return leafB.level - leafA.level; })
-
-    var current = leaves[0];
-
-    // Iterate through the leaf nodes, for each level add the one furthest in the direction we care about
-    while (currentIdx < leaves.length - 1) {
-        var next = leaves[currentIdx + 1];
-
-        // If the next leaf is on the next level above us we're done processing leaves on this level
-        if (next.level != current.level) {
-            edge.push(current);
-            // Set the current node to be this nodes parent; if there are no leaf nodes on this level, the
-            // parent of the node we just added will be the furthest in the direction we care about
-            current = current.parent;
-            continue;
-        }
-        currentIdx++;
-
-        // If this leaf node is further in the direction we care about; use it as our new current
-        var currentPos = current.getPosition(),
-            nextPos = next.getPosition();
-        if (side == EDGE_RIGHT) {
-            if (nextPos.right > currentPos.right) {
-                current = next;
-            } else if (nextPos.right == currentPos.right) {
-                current = (current.data.name > next.data.name) ? current : next;
-            }
-        } else {
-            if (nextPos.left < currentPos.left) {
-                current = next;
-            } else if (nextPos.left == currentPos.left) {
-                current = (current.data.name > next.data.name) ? current : next;
-            }
-        }
-    }
-
-    // Add all the remaining nodes until we hit ourselves
-    while (current && current.level > this.level) {
-        edge.push(current);
-        current = current.parent;
-    }
-    edge.push(this);
-
-    return edge;
-};
-
-Tree.prototype.compareEdges = function(leftSideRightEdge, rightSideLeftEdge) {
-    var maxOverlap = 0,
-        minSpaceBetween = Number.MAX_VALUE,
-        rightEdgeOfLeftNode,
-        leftEdgeOfRightNode;
-
-    // If either side is empty, we're done
-    if (!leftSideRightEdge.length || !rightSideLeftEdge.length) {
-        return;
-    }
-    var a = leftSideRightEdge.slice(), b = rightSideLeftEdge.slice(); // TODO
-    // Discard nodes which are below the lowest node on the other edge
-    while (leftSideRightEdge[0].level > rightSideLeftEdge[0].level) {
-        leftSideRightEdge.shift();
-    }
-    while (leftSideRightEdge[0].level < rightSideLeftEdge[0].level) {
-        rightSideLeftEdge.shift();
-    }
-
-    // Iterate through the remaining nodes, comparing the distances between then
-    for (var idx = 0; idx < leftSideRightEdge.length; idx++) {
-        rightEdgeOfLeftNode = leftSideRightEdge[idx].getPosition().right;
-        leftEdgeOfRightNode = rightSideLeftEdge[idx].getPosition().left;
-        if (rightEdgeOfLeftNode > leftEdgeOfRightNode) {
-            maxOverlap = Math.max(maxOverlap, rightEdgeOfLeftNode - leftEdgeOfRightNode);
-        } else {
-            minSpaceBetween = Math.min(minSpaceBetween, leftEdgeOfRightNode - rightEdgeOfLeftNode);
-        }
-    }
-
-    return (maxOverlap > 0) ? maxOverlap : -minSpaceBetween;
-}
-
 Tree.prototype.render = function() {
     // Render all of our children first so we know what sort of spacing we need
     for (var i = 0; i < this.children.length; i++) {
         this.children[i].render();
     }
 
+    var leftEdge,
+        rightEdge,
+        lastRightEdge,
+        deltaX,
+        targetX;
+
+    if (this.children.length) {
+        [leftEdge, lastRightEdge] = Edges.createEdges(this.children[0]);
+    }
+
     // Align each subtree relative to each other
     for (var i = 1; i < this.children.length; i++) {
-        var leftSideRightEdge = this.children[i - 1].createEdge(EDGE_RIGHT),
-            rightSideLeftEdge = this.children[i].createEdge(EDGE_LEFT),
-            deltaX = this.compareEdges(leftSideRightEdge, rightSideLeftEdge) + this.config.horizontalPadding,
-            targetX = this.children[i].container.x() + deltaX;
+        [leftEdge, rightEdge] = Edges.createEdges(this.children[i]);
+        deltaX = Edges.compareEdges(lastRightEdge, leftEdge) + this.config.horizontalPadding,
+        targetX = this.children[i].container.x() + deltaX;
 
         // If we've come out of the above with a targetX, instead of moving this tree left to that position,
         // move all the children to the left of this tree to the right by the same amount deltaX
@@ -226,10 +146,13 @@ Tree.prototype.render = function() {
                 this.children[j].container.x(this.children[j].container.x() - deltaX);
             }
 
-        // Otherwise, shift this subtree left by deltaX
+        // Otherwise, shift this subtree by deltaX
         } else {
             this.children[i].container.x(targetX);
-        }
+        } // TODO handle case when we hide left most subtree and all children need to shift left, if not handled already
+
+
+        lastRightEdge = Edges.joinRightEdges(lastRightEdge, rightEdge);
     }
 
     // Reset our node's position
@@ -241,6 +164,6 @@ Tree.prototype.render = function() {
 
     this.node.x(Math.max(0, (childContainerWidth / 2) - (nodeWidth / 2)));
 }
-
+// TODO we may possibly be able to return an edge up to the parent context, which would mean that we wouldn't have to find a bunch of leaf nodes every time?
 
 export default Tree;
