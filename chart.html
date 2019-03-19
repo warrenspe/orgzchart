@@ -1,10 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/svg.js/2.6.5/svg.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/5.5.0/d3.min.js"></script>
         <script src="http://localhost:8000/dist/orgzchart.js"></script>
-        <script src="http://localhost:8000/svg.foreignobject.js"></script>
         <style>
             .node {
                 border: 1px solid black;
@@ -12,14 +9,14 @@
         </style>
     </head>
     <body>
-        <div id="chart"></div>
+        <div id="chart2"></div>
+        <!--<svg><rect height="10" width="10"></rect><g style="
+    transform: translate(50px, 50px);
+"><g style="
+    transform: translate(50px, 50px);
+    "><rect height="10" width="10"></rect></g></g></svg>-->
         <script>
-            o=new OrgzChart(
-                document.querySelector("#chart"),
-                "/data1.json",
-                {
-                }
-            )
+             s = OrgzChart(document.querySelector("#chart2"), "/data1.json");
         </script>
     </body>
 </html>
