@@ -51,20 +51,10 @@ window.OrgzChart = (function(containerDOM, data, config) {
     var $svg,
         root;
 
-    function setupTree(data, config) {
-        // Create an SVG object inside out containerDOM
-        $svg = SVG(containerDOM.id)
-            .size(containerDOM.getBoundingClientRect().width, containerDOM.getBoundingClientRect().height);
-
-        root = new Tree(null, $svg, config, data);
-
-        // Render ourselves in the SVG DOM
+    this.render = function() {
         root.render();
-
-        // TODO testing
-        this.$svg = $svg
-        this.root = root;
-    }
+        resize();
+    }.bind(this);
 
     function init() {
         if (!(containerDOM instanceof Element)) {
@@ -80,13 +70,36 @@ window.OrgzChart = (function(containerDOM, data, config) {
             .catch((error) => {
                 console.error(error);
             });
-    }
+    };
+
+    function setupTree(data, config) {
+        // Create an SVG object inside out containerDOM
+        $svg = SVG(containerDOM.id)
+            .size(containerDOM.getBoundingClientRect().width, containerDOM.getBoundingClientRect().height);
+
+        root = new Tree(null, $svg, config, data);
+
+        // Render ourselves in the SVG DOM
+        this.render();
+
+        // TODO testing
+        this.$svg = $svg
+        this.root = root;
+    };
+
+    /* Updates the size of the SVG to reflect its content
+     */
+    function resize() {
+        var contentBox = $svg.bbox();
+
+        $svg.size(contentBox.w + 5, contentBox.h + 5);
+    };
 
     function _makeInternalConfig(config) {
         return {
             childrenAttr: config.childrenAttr || "children",
-            nodeHeight: config.nodeHeight || 100,
-            verticalPadding: parseInt(config.verticalPadding || 15), // TODO doc
+            nodeHeight: config.nodeHeight || 40,
+            verticalPadding: parseInt(config.verticalPadding || 35), // TODO doc
             horizontalPadding: parseInt(config.HorizontalPadding || 5), // TODO doc
             parentAttr: config.parentAttr || "parent",
             nodeIdAttr: config.nodeIdAttr || "id",
@@ -99,7 +112,7 @@ window.OrgzChart = (function(containerDOM, data, config) {
                 return this;
             }.apply({})
         };
-    }
+    };
 
     function _defaultCreateNode(nodeData) {
         var $nodeContainer = document.createElement("div"),
@@ -112,8 +125,10 @@ window.OrgzChart = (function(containerDOM, data, config) {
         $nameContainer.innerHTML = nodeData["name"] || "";
         $titleContainer.innerHTML = nodeData["title"] || "";
 
+        $nodeContainer.style.height = "calc(100% - 2px)"
+
         return $nodeContainer;
-    }
+    }; // Have an automatic routine that checks height/width of content and updates the SVG's based on that
 
     init.call(this);
     return this;
