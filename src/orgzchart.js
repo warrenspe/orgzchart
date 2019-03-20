@@ -27,6 +27,8 @@
             data            - The data to initialize the OrgzChart with (See above).
             config          - An object containing optional configuration directives: {
                 nodeHeight  - The height of a child node within the chart.  Must be consistent for all nodes in the chart.
+                verticalPadding - A number containing the amount of space between parent and child nodes.
+                horizontalPadding - A number containing the minimum amount of space between child nodes
                 createNode  - A function which when passed an object containing the data for the node to create, returns
                               an HTMLElement to render within the orgzchart.
                     The default createNode function expects the following attributes to be present in each data object:
@@ -38,11 +40,13 @@
     }
 */
 
+// Have an automatic routine that checks height/width of content and updates the SVG's based on that TODO
+// TODO hover node effects; maybe show route up above parent to root
+
 import 'promise-polyfill/src/polyfill';
 import './dependencies/svg.min.js';
 import './dependencies/svg.foreignobject.js';
 
-//import Renderer from './render.js'; // TODO
 import Tree from './tree.js';
 import convertData from './data_convert.js';
 
@@ -51,9 +55,27 @@ window.OrgzChart = (function(containerDOM, data, config) {
     var $svg,
         root;
 
+    this.defaults = {
+        childrenAttr: "children",
+        nodeHeight: 40,
+        verticalPadding: 35,
+        horizontalPadding: 5,
+        parentAttr: "parent",
+        nodeIdAttr: "id",
+        createNode: _defaultCreateNode
+    };
+
     this.render = function() {
         root.render();
-        resize();
+        this.resize();
+    }.bind(this);
+
+    /* Updates the size of the SVG to reflect its content
+     */
+    this.resize = function() {
+        var contentBox = $svg.bbox();
+
+        $svg.size(contentBox.w + 5, contentBox.h + 5);
     }.bind(this);
 
     function init() {
@@ -61,7 +83,7 @@ window.OrgzChart = (function(containerDOM, data, config) {
             throw "First parameter to OrgzChart must be a DOM element.  Got " + containerDOM + " instead";
         }
 
-        config = _makeInternalConfig(config || {});
+        config = _makeInternalConfig.call(this, config || {});
 
         convertData(data, config)
             .then((data) => {
@@ -77,41 +99,34 @@ window.OrgzChart = (function(containerDOM, data, config) {
         $svg = SVG(containerDOM.id)
             .size(containerDOM.getBoundingClientRect().width, containerDOM.getBoundingClientRect().height);
 
-        root = new Tree(null, $svg, config, data);
+        root = new Tree(this, null, $svg, config, data);
 
         // Render ourselves in the SVG DOM
         this.render();
-
-        // TODO testing
-        this.$svg = $svg
-        this.root = root;
-    };
-
-    /* Updates the size of the SVG to reflect its content
-     */
-    function resize() {
-        var contentBox = $svg.bbox();
-
-        $svg.size(contentBox.w + 5, contentBox.h + 5);
     };
 
     function _makeInternalConfig(config) {
-        return {
-            childrenAttr: config.childrenAttr || "children",
-            nodeHeight: config.nodeHeight || 40,
-            verticalPadding: parseInt(config.verticalPadding || 35), // TODO doc
-            horizontalPadding: parseInt(config.HorizontalPadding || 5), // TODO doc
-            parentAttr: config.parentAttr || "parent",
-            nodeIdAttr: config.nodeIdAttr || "id",
-            createNode: config.createNode || _defaultCreateNode,
-            subTreeIdGen: function() {
-                var idx = 0;
-                this.next = function() {
-                    return idx++;
-                }
-                return this;
-            }.apply({})
-        };
+        config = Object.assign({}, config || {}, this.defaults);
+
+        ["verticalPadding", "horizontalPadding", "nodeHeight"].forEach((param) => {
+            var val = parseFloat(config[param]);
+            if (typeof val != "number" || isNaN(val)) {
+                throw `${param} must be passed as a number, not ${config[param]}`;
+            }
+            config[param] = val;
+        });
+
+        ["childrenAttr", "parentAttr", "nodeIdAttr"].forEach((param) => {
+            if (typeof config[param] != "string") {
+                throw `${param} must be passed as a string, not ${config[param]}`;
+            }
+        });
+
+        if (typeof config.createNode != "function") {
+            throw `createNode must be passed as a function, not ${config.createNode}`;
+        }
+
+        return config;
     };
 
     function _defaultCreateNode(nodeData) {
@@ -119,16 +134,26 @@ window.OrgzChart = (function(containerDOM, data, config) {
             $nameContainer = document.createElement("div"),
             $titleContainer = document.createElement("div");
 
+        // DOM layout & classes
         $nodeContainer.appendChild($nameContainer);
         $nodeContainer.appendChild($titleContainer);
         $nodeContainer.className = "node";
+        $nameContainer.className = "name";
+        $titleContainer.className = "title";
+
+        // Set name/title
         $nameContainer.innerHTML = nodeData["name"] || "";
         $titleContainer.innerHTML = nodeData["title"] || "";
+
+        // Styles
+        $nodeContainer.style.border = "1px solid lightgray";
+        $nodeContainer.style.borderRadius = "2px";
+        $nameContainer.style.backgroundColor = "lightgray";
 
         $nodeContainer.style.height = "calc(100% - 2px)"
 
         return $nodeContainer;
-    }; // Have an automatic routine that checks height/width of content and updates the SVG's based on that
+    };
 
     init.call(this);
     return this;

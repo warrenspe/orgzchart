@@ -1,6 +1,7 @@
 import * as Edges from './edge.js';
 
-function Tree(parent, parentElement, config, data) {
+function Tree(chart, parent, parentElement, config, data) {
+    this.chart = chart;
     this.parent = parent;
     this.parentElement = parentElement;
     this.config = config;
@@ -40,16 +41,17 @@ function Tree(parent, parentElement, config, data) {
 /* Creates a foreignobject with a nested HTML object inside for rendering the visible contents of the node
  */
 Tree.prototype.makeNode = function() {
+    // Create a foreign object to store the node
     this.node = this.container.foreignObject();
+    // Create the node to be stored in the foreign object
     this.innerNode = this.config.createNode(this.data);
+    // Set the foreign object's size to 0 to force the node's scrollWidth to reflect its desired width
+    this.node.size(0, 0);
+    // Add the node to the foreign object
     this.node.appendChild(this.innerNode);
-    this.node.size(this.getTextWidth(this.data.name) + 2, this.config.nodeHeight);
-
-    /*(this.node = this.container
-        .rect()
-        .size(10, 10) //TODO
-        .fill({'color': 'blue'})// TODO
-        .addClass("tree-node");*/
+    // Set the foreign object's width to the desired width of the node
+    this.node.size(this.innerNode.scrollWidth, this.config.nodeHeight);
+    //this.node.size(this.getTextWidth(this.data.name) + 2, this.config.nodeHeight);
 };
 
 /*
@@ -69,7 +71,7 @@ Tree.prototype.getTextWidth = function(text) {
 Tree.prototype.addChildren = function(childrenToMake) {
     // Create subtrees based on the children in data
     for (var i = 0; i < childrenToMake.length; i++) {
-        this.children.push(new Tree(this, this.childContainer, this.config, childrenToMake[i]));
+        this.children.push(new Tree(this.chart, this, this.childContainer, this.config, childrenToMake[i]));
     }
 
     // TODO cost algorithm for spacing out the various subtrees
@@ -97,8 +99,13 @@ Tree.prototype.setVisibility = function(visible) {
 
     this.visible = visible;
 
-    for (var i = 0; i < this.children.length; i++) {
-        this.children[i].setVisibility(false);
+    if (!visible) {
+        for (var i = 0; i < this.children.length; i++) {
+            this.children[i].setVisibility(false);
+        }
+        this.container.style("visibility", "collapse");
+    } else {
+        this.container.style("visibility", "visible");
     }
 
     if (this.children.length == 0 && this.parent) {
@@ -110,7 +117,13 @@ Tree.prototype.setVisibility = function(visible) {
     }
 }
 
-/* Gets the right-most child TODO do we need this or the below?
+/* Returns an array of all the children of this subtree which are visible
+ */
+Tree.prototype.getVisibleChildren = function() {
+    return this.children.filter((child) => child.visible);
+};
+
+/* Gets the right-most visible child of this subtree
 */
 Tree.prototype.getRightMostVisibleChild = function() {
     for (var i = 0; i < this.children.length; i++) {
@@ -120,6 +133,8 @@ Tree.prototype.getRightMostVisibleChild = function() {
     }
 };
 
+/* Gets the left-most visible child of this subtree
+*/
 Tree.prototype.getLeftMostVisibleChild = function() {
     for (var i = this.children.length - 1; i >= 0; i--) {
         if (this.children[i].visible) {
@@ -151,33 +166,37 @@ Tree.prototype.removeLeaf = function(leaf) {
 /* Renders the subtree, its children, and the bars above its node (from its parent)
  */
 Tree.prototype.render = function() {
-    this.renderChildren();
-    this.renderNode();
-    this.renderBars();
+    if (this.visible) {
+        this.renderChildren();
+        this.renderNode();
+        this.renderBars();
+    }
 };
 
 Tree.prototype.renderChildren = function() {
-    // Render all of our children first so we know what sort of spacing we need
-    for (var i = 0; i < this.children.length; i++) {
-        this.children[i].render();
-    }
-
-    var leftEdge,
+    var visibleChildren = this.getVisibleChildren(),
+        leftEdge,
         rightEdge,
         lastRightEdge,
         deltaX,
         targetX;
 
-    if (this.children.length) {
-        [leftEdge, lastRightEdge] = Edges.createEdges(this.children[0]);
+    if (visibleChildren.length) {
+        // Render all of our children first so we know what sort of spacing we need
+        for (var i = 0; i < visibleChildren.length; i++) {
+            visibleChildren[i].render();
+        }
+
+        // Space out the children so that they're compact but not overlapping
+        [leftEdge, lastRightEdge] = Edges.createEdges(visibleChildren[0]);
 
         // Align each subtree relative to each other
-        for (var i = 1; i < this.children.length; i++) {
-            [leftEdge, rightEdge] = Edges.createEdges(this.children[i]);
+        for (var i = 1; i < visibleChildren.length; i++) {
+            [leftEdge, rightEdge] = Edges.createEdges(visibleChildren[i]);
             deltaX = Edges.compareEdges(lastRightEdge, leftEdge) + this.config.horizontalPadding;
 
             if (deltaX) {
-                this.children[i].container.x(this.children[i].container.x() + deltaX);
+                visibleChildren[i].container.x(visibleChildren[i].container.x() + deltaX);
             }
 
             lastRightEdge = Edges.joinRightEdges(lastRightEdge, rightEdge);
@@ -185,14 +204,14 @@ Tree.prototype.renderChildren = function() {
 
         // Now that we've oriented all our children relative to each other, iterate through them again, to ensure that the
         // left edge of subtree with the leftmost node is positioned at x-index 0 (relative to our container)
-        var lowestX = this.children[0].container.x();
-        for (var i = 1; i < this.children.length; i++) {
-            lowestX = Math.min(this.children[i].container.x(), lowestX);
+        var lowestX = visibleChildren[0].container.x();
+        for (var i = 1; i < visibleChildren.length; i++) {
+            lowestX = Math.min(visibleChildren[i].container.x(), lowestX);
         }
         // If it's not at 0, we need to position everyone so that it is
         if (lowestX != 0) {
-            for (var i = 0; i < this.children.length; i++) {
-                this.children[i].container.x(this.children[i].container.x() - lowestX);
+            for (var i = 0; i < visibleChildren.length; i++) {
+                visibleChildren[i].container.x(visibleChildren[i].container.x() - lowestX);
             }
         }
     }
@@ -226,8 +245,8 @@ Tree.prototype.renderBars = function() {
     if (this.children.some((child) => child.visible)) {
         this.lowerBars.style("visibility", "visible");
         // Update the plot of the child bars so that it extends to its children
-        var minChild = this.children[0],
-            maxChild = this.children[this.children.length - 1],
+        var minChild = this.getLeftMostVisibleChild(),
+            maxChild = this.getRightMostVisibleChild(),
             minChildBox = minChild.node.bbox(),
             maxChildBox = maxChild.node.bbox(),
             minContainerX = minChild.container.x(),
