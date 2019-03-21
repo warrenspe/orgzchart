@@ -11,6 +11,8 @@ function Tree(chart, parent, parentElement, config, data) {
     this.visible = true;
     this.level = (parent !== null) ? parent.level + 1 : 0;
 
+    this.nodeWidth = null;
+
     this.container = this.parentElement
         .group()
         .addClass("tree-container");
@@ -68,12 +70,12 @@ Tree.prototype.makeNode = function() {
  */
 Tree.prototype.measureNode = function() {
     // Store the target width on the node object for lack of a better place
-    this.node._targetWidth = this.innerNode.scrollWidth + (this.innerNode.offsetWidth - this.innerNode.clientWidth);
+    this.nodeWidth = this.innerNode.scrollWidth + (this.innerNode.offsetWidth - this.innerNode.clientWidth);
 };
 /* Finally, we set all the widths of all the nodes in a row, without doing any reads that would trigger a reflow
  */
 Tree.prototype.setNodeWidth = function() {
-    this.node.size(this.node._targetWidth, this.config.nodeHeight);
+    this.node.size(this.nodeWidth, this.config.nodeHeight);
 };
 
 /*
