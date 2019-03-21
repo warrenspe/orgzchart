@@ -55,16 +55,6 @@ window.OrgzChart = (function(containerDOM, data, config) {
     var $svg,
         root;
 
-    this.defaults = {
-        childrenAttr: "children",
-        nodeHeight: 40,
-        verticalPadding: 35,
-        horizontalPadding: 5,
-        parentAttr: "parent",
-        nodeIdAttr: "id",
-        createNode: _defaultCreateNode
-    };
-
     this.render = function() {
         root.render();
         this.resize();
@@ -77,6 +67,49 @@ window.OrgzChart = (function(containerDOM, data, config) {
 
         $svg.size(contentBox.w + 5, contentBox.h + 5);
     }.bind(this);
+
+    /* Default function which is called to create nodes for the chart
+     */
+    this.createNode = function(nodeData) {
+        var $nodeContainer = document.createElement("div"),
+            $nameContainer = document.createElement("div"),
+            $titleContainer = document.createElement("div");
+
+        // DOM layout & classes
+        $nodeContainer.appendChild($titleContainer);
+        $nodeContainer.appendChild($nameContainer);
+        $nodeContainer.className = "node";
+        $titleContainer.className = "title";
+        $nameContainer.className = "name";
+
+        // Set name/title
+        $titleContainer.innerHTML = nodeData["title"] || "";
+        $nameContainer.innerHTML = nodeData["name"] || "";
+
+        // Styles
+        $nodeContainer.style.display = "inline-block";
+        $nodeContainer.style.border = "1px solid lightgray";
+        $nodeContainer.style.borderRadius = "2px";
+
+        $nameContainer.style.textAlign = "center";
+        $nameContainer.style.padding = "4px";
+        $titleContainer.style.textAlign = "center";
+        $titleContainer.style.padding = "4px";
+        $titleContainer.style.backgroundColor = "lightgray";
+        $titleContainer.style.fontWeight = "bold";
+
+        return $nodeContainer;
+    }.bind(this);
+
+    this.defaults = {
+        childrenAttr: "children",
+        nodeHeight: 60,
+        verticalPadding: 35,
+        horizontalPadding: 5,
+        parentAttr: "parent",
+        nodeIdAttr: "id",
+        createNode: this.createNode
+    };
 
     function init() {
         if (!(containerDOM instanceof Element)) {
@@ -99,11 +132,26 @@ window.OrgzChart = (function(containerDOM, data, config) {
         $svg = SVG(containerDOM.id)
             .size(containerDOM.getBoundingClientRect().width, containerDOM.getBoundingClientRect().height);
 
+        // Add a class to the containerDOM to signify that we've initialized in it
+        containerDOM.className += ((containerDOM.className.length) ? " " : "") + "orgzchart";
+
         root = new Tree(this, null, $svg, config, data);
+        initializeSubTree(root);
 
         // Render ourselves in the SVG DOM
         this.render();
     };
+
+    /* Performs steps that a new subtree must undergo in order to be added to the DOM.
+     */
+    function initializeSubTree(subTreeRoot) {
+        subTreeRoot.applyToEntireSubtree(function(node) {
+            node.measureNode();
+        });
+        subTreeRoot.applyToEntireSubtree(function(node) {
+            node.setNodeWidth();
+        });
+    }
 
     function _makeInternalConfig(config) {
         config = Object.assign({}, config || {}, this.defaults);
@@ -127,32 +175,6 @@ window.OrgzChart = (function(containerDOM, data, config) {
         }
 
         return config;
-    };
-
-    function _defaultCreateNode(nodeData) {
-        var $nodeContainer = document.createElement("div"),
-            $nameContainer = document.createElement("div"),
-            $titleContainer = document.createElement("div");
-
-        // DOM layout & classes
-        $nodeContainer.appendChild($nameContainer);
-        $nodeContainer.appendChild($titleContainer);
-        $nodeContainer.className = "node";
-        $nameContainer.className = "name";
-        $titleContainer.className = "title";
-
-        // Set name/title
-        $nameContainer.innerHTML = nodeData["name"] || "";
-        $titleContainer.innerHTML = nodeData["title"] || "";
-
-        // Styles
-        $nodeContainer.style.border = "1px solid lightgray";
-        $nodeContainer.style.borderRadius = "2px";
-        $nameContainer.style.backgroundColor = "lightgray";
-
-        $nodeContainer.style.height = "calc(100% - 2px)"
-
-        return $nodeContainer;
     };
 
     init.call(this);

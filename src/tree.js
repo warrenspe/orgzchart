@@ -38,7 +38,20 @@ function Tree(chart, parent, parentElement, config, data) {
     }
 };
 
+Tree.prototype.applyToEntireSubtree = function(func) {
+    var toRun = [this],
+        currentIdx = 0;
+
+    while (currentIdx < toRun.length) {
+        var current = toRun[currentIdx++];
+        func(current);
+        Array.prototype.push.apply(toRun, current.children);
+    }
+};
+
 /* Creates a foreignobject with a nested HTML object inside for rendering the visible contents of the node
+ * Note: We create the root node in three steps; this function is the first of the three steps to minimize
+ *       document reflows. This is the first of the three, where we create the elements and add them to the DOM.
  */
 Tree.prototype.makeNode = function() {
     // Create a foreign object to store the node
@@ -49,9 +62,18 @@ Tree.prototype.makeNode = function() {
     this.node.size(0, 0);
     // Add the node to the foreign object
     this.node.appendChild(this.innerNode);
-    // Set the foreign object's width to the desired width of the node
-    this.node.size(this.innerNode.scrollWidth, this.config.nodeHeight);
-    //this.node.size(this.getTextWidth(this.data.name) + 2, this.config.nodeHeight);
+};
+/* Next we measure the desired width of the node that we added, without making any changes to the DOM which
+ * would invalidate the layout and cause the next read to trigger a reflow
+ */
+Tree.prototype.measureNode = function() {
+    // Store the target width on the node object for lack of a better place
+    this.node._targetWidth = this.innerNode.scrollWidth + (this.innerNode.offsetWidth - this.innerNode.clientWidth);
+};
+/* Finally, we set all the widths of all the nodes in a row, without doing any reads that would trigger a reflow
+ */
+Tree.prototype.setNodeWidth = function() {
+    this.node.size(this.node._targetWidth, this.config.nodeHeight);
 };
 
 /*
@@ -217,7 +239,7 @@ Tree.prototype.renderChildren = function() {
     }
 }
 
-Tree.prototype.renderNode = function() {
+Tree.prototype.renderNode = function() { // TODO see about refactoring to minimize reflows
 
     // Reset our node's position
     this.node.x(0);
@@ -231,6 +253,7 @@ Tree.prototype.renderNode = function() {
 
 Tree.prototype.renderBars = function() {
     var nodeBox = this.node.bbox(),
+        innerNodeBox = this.innerNode.getBoundingClientRect(),
         nodeCenter = nodeBox.x + (nodeBox.w / 2),
         halfVerticalPadding = this.config.verticalPadding / 2;
 
@@ -254,7 +277,7 @@ Tree.prototype.renderBars = function() {
 
         this.lowerBars.plot([
             // Start at bottom middle of node
-            [nodeCenter, nodeBox.h],
+            [nodeCenter, innerNodeBox.height],
             // Draw straight down to half vertical padding
             [nodeCenter, halfVerticalPadding + nodeBox.h],
             // Cut left to middle of far left child position
