@@ -11,23 +11,36 @@ function Tree(chart, parent, parentElement, config, data) {
     this.visible = true;
     this.level = (parent !== null) ? parent.level + 1 : 0;
 
+    // Left position relative to parent container
+    this.rel_left = 0;
+    // Width of the foreign object element
     this.nodeWidth = null;
+    // Height of the foreign object element
     this.nodeHeight = null;
+    // Left offset of the foreign object element
+    this.nodeOffsetLeft = 0;
 
-    this.container = this.parentElement
+    // Container which contains the foreign element and all the child nodes
+    this.container = parentElement
         .group()
         .addClass("tree-container");
+    // Container which contains all the child nodes, is offset vertically in the container
     this.childContainer = this.container
         .group()
         .y(this.config.nodeHeight + config.verticalPadding)
         .addClass("child-container");
+    // Bar which will be shown going up from our foreign element to our parent's lower bars
     this.upperBar = this.container.polyline()
-        .stroke({width: 1}) // TODO
+        .stroke({width: 1})
         .fill("none");
+    // Bars which will extend below our foreign element to our children's upper bars
     this.lowerBars = this.container.polyline()
-        .stroke({width: 1}) // TODO
+        .stroke({width: 1})
         .fill("none");
 
+    this.id = this.container.id();
+
+    // Render the foreign element for this node
     this.makeNode();
 
     // Add children if we have them
@@ -41,6 +54,8 @@ function Tree(chart, parent, parentElement, config, data) {
     }
 };
 
+/*  Applies a function to this node and all of children below this node
+ */
 Tree.prototype.applyToEntireSubtree = function(func) {
     var toRun = [this],
         currentIdx = 0;
@@ -51,6 +66,35 @@ Tree.prototype.applyToEntireSubtree = function(func) {
         Array.prototype.push.apply(toRun, current.children);
     }
 };
+
+/*  Moves the tree within its parent's childContainer to the specified left position
+ */
+Tree.prototype.move = function(left) {
+    this.rel_left = left;
+    this.container.x(left);
+};
+
+/* Moves the tree element within its parent's childContainer relative to its current position
+ */
+Tree.prototype.moveDelta = function(left) {
+    this.move(left + this.rel_left);
+};
+
+/* Calculates the width of this tree (or more specifically, of all its children
+ */
+Tree.prototype.width = function() {
+    // Calculate the element which is furthest to the right within this group
+    var maxRight = 0,
+        minLeft = 0;
+
+    for (var i = 0; i < this.children.length; i++) {
+        maxRight = Math.max(maxRight, this.children[i].rel_left + this.children[i].width());
+        minLeft = Math.min(minLeft, this.children[i].rel_left);
+    }
+
+    return Math.max(minLeft + maxRight, this.nodeWidth);
+};
+
 
 /* Creates a foreignobject with a nested HTML object inside for rendering the visible contents of the node
  * Note: We create the root node in three steps; this function is the first of the three steps to minimize
@@ -80,18 +124,6 @@ Tree.prototype.setNodeWidth = function() {
     this.node.size(this.nodeWidth, this.config.nodeHeight);
 };
 
-/*
-   Uses canvas.measureText to compute and return the width of the given text of given font in pixels.
-
-   https://stackoverflow.com/questions/118241/calculate-text-width-with-javascript/21015393#21015393
-*/
-Tree.prototype.getTextWidth = function(text) {
-    var canvas = this.getTextWidth.canvas || (this.getTextWidth.canvas = document.createElement("canvas")),
-        context = canvas.getContext("2d");
-    context.font = window.getComputedStyle( this.innerNode, null ).getPropertyValue("font");
-    return context.measureText(text).width;
-}
-
 /* Adds children of this Tree.
 */
 Tree.prototype.addChildren = function(childrenToMake) {
@@ -101,18 +133,6 @@ Tree.prototype.addChildren = function(childrenToMake) {
     }
 
     // TODO cost algorithm for spacing out the various subtrees
-};
-
-/*  Returns an object detailing the position of the root node of this Tree.
-
-    The returned object will have left and right attributes detailing the left and right positions of
-    the root node relative to the outer SVG.
-*/
-Tree.prototype.getPosition = function() {
-    var left = this.container.ctm().e + this.node.x(),
-        right = left + this.node.bbox().w;
-
-    return {left: left, right: right};
 };
 
 /* Sets this subtree to either be visible or invisible.
@@ -219,46 +239,38 @@ Tree.prototype.renderChildren = function() {
         // Align each subtree relative to each other
         for (var i = 1; i < visibleChildren.length; i++) {
             [leftEdge, rightEdge] = Edges.createEdges(visibleChildren[i]);
-            deltaX = Edges.compareEdges(lastRightEdge, leftEdge) + this.config.horizontalPadding;
+            deltaX = lastRightEdge.compareRightWithLeftEdge(leftEdge) + this.config.horizontalPadding;
 
             if (deltaX) {
-                visibleChildren[i].container.x(visibleChildren[i].container.x() + deltaX);
+                visibleChildren[i].moveDelta(deltaX);
+                rightEdge.updateLeftPosition(deltaX);
             }
 
-            lastRightEdge = Edges.joinRightEdges(lastRightEdge, rightEdge);
+            lastRightEdge = rightEdge.extendRight(lastRightEdge);
         }
 
         // Now that we've oriented all our children relative to each other, iterate through them again, to ensure that the
         // left edge of subtree with the leftmost node is positioned at x-index 0 (relative to our container)
-        var lowestX = visibleChildren[0].container.x();
+        var lowestX = visibleChildren[0].rel_left;
         for (var i = 1; i < visibleChildren.length; i++) {
-            lowestX = Math.min(visibleChildren[i].container.x(), lowestX);
+            lowestX = Math.min(visibleChildren[i].rel_left, lowestX);
         }
         // If it's not at 0, we need to position everyone so that it is
         if (lowestX != 0) {
             for (var i = 0; i < visibleChildren.length; i++) {
-                visibleChildren[i].container.x(visibleChildren[i].container.x() - lowestX);
+                visibleChildren[i].moveDelta(-lowestX);
             }
         }
     }
 }
 
-Tree.prototype.renderNode = function() { // TODO see about refactoring to minimize reflows
-
-    // Reset our node's position
-    this.node.x(0);
-
-    // Align our root node in the center of the container
-    var childContainerWidth = this.childContainer.node.getBBox().width,
-        nodeWidth = this.node.width();
-
-    this.node.x(Math.max(0, (childContainerWidth / 2) - (nodeWidth / 2)));
+Tree.prototype.renderNode = function() {
+    this.nodeOffsetLeft = Math.max(0, (this.width() / 2) - (this.nodeWidth / 2))
+    this.node.x(this.nodeOffsetLeft);
 }
 
 Tree.prototype.renderBars = function() {
-    var nodeBox = this.node.bbox(),
-        innerNodeBox = this.innerNode.getBoundingClientRect(),
-        nodeCenter = nodeBox.x + (nodeBox.w / 2),
+    var nodeCenter = this.nodeOffsetLeft + (this.nodeWidth / 2),
         halfVerticalPadding = this.config.verticalPadding / 2;
 
     // Show the parent bar
@@ -274,26 +286,22 @@ Tree.prototype.renderBars = function() {
         // Update the plot of the child bars so that it extends to its children
         var minChild = this.getLeftMostVisibleChild(),
             maxChild = this.getRightMostVisibleChild(),
-            minChildBox = minChild.node.bbox(),
-            maxChildBox = maxChild.node.bbox(),
-            minContainerX = minChild.container.x(),
-            maxContainerX = maxChild.container.x();
+            minContainerX = minChild.rel_left + minChild.nodeOffsetLeft + (minChild.nodeWidth / 2),
+            maxContainerX = maxChild.rel_left + maxChild.nodeOffsetLeft + (maxChild.nodeWidth / 2);
 
         this.lowerBars.plot([
             // Start at bottom middle of node
-            [nodeCenter, innerNodeBox.height],
+            [nodeCenter, this.nodeHeight],
             // Draw straight down to half vertical padding
-            [nodeCenter, halfVerticalPadding + nodeBox.h],
+            [nodeCenter, halfVerticalPadding + this.config.nodeHeight],
             // Cut left to middle of far left child position
-            [minContainerX + minChildBox.x + (minChildBox.w / 2), halfVerticalPadding + nodeBox.h],
+            [minContainerX, halfVerticalPadding + this.config.nodeHeight],
             // Cut right to middle of far right child position
-            [maxContainerX + maxChildBox.x + (maxChildBox.w / 2), halfVerticalPadding + nodeBox.h]
+            [maxContainerX, halfVerticalPadding + this.config.nodeHeight]
         ]);
     } else {
         this.lowerBars.style("visibility", "collapse");
     }
 }
-
-// TODO we may possibly be able to return an edge up to the parent context, which would mean that we wouldn't have to find a bunch of leaf nodes every time?
 
 export default Tree;

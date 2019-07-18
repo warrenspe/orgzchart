@@ -42,6 +42,7 @@
 
 // Have an automatic routine that checks height/width of content and updates the SVG's based on that TODO
 // TODO hover node effects; maybe show route up above parent to root
+// TODO rename Tree -> TreeNode
 
 import 'promise-polyfill/src/polyfill';
 import './dependencies/svg.min.js';
@@ -49,23 +50,24 @@ import './dependencies/svg.foreignobject.js';
 
 import Tree from './tree.js';
 import convertData from './data_convert.js';
+import {enablePan, enableZoom} from './events/pan_zoom.js';
 
 
 window.OrgzChart = (function(containerDOM, data, config) {
-    var $svg,
-        root;
+    this.$svg = null;
+    this.root = null;
 
     this.render = function() {
-        root.render();
+        this.root.render();
         this.resize();
     }.bind(this);
 
     /* Updates the size of the SVG to reflect its content
      */
     this.resize = function() {
-        var contentBox = $svg.bbox();
+        var contentBox = this.$svg.bbox();
 
-        $svg.size(contentBox.w + 5, contentBox.h + 5);
+        this.$svg.size(contentBox.w + 5, contentBox.h + 5);
     }.bind(this);
 
     /* Default function which is called to create nodes for the chart
@@ -121,6 +123,7 @@ window.OrgzChart = (function(containerDOM, data, config) {
         convertData(data, config)
             .then((data) => {
                 setupTree.call(this, data, config);
+                setupEvents.call(this);
             })
             .catch((error) => {
                 console.error(error);
@@ -129,17 +132,21 @@ window.OrgzChart = (function(containerDOM, data, config) {
 
     function setupTree(data, config) {
         // Create an SVG object inside out containerDOM
-        $svg = SVG(containerDOM.id)
+        this.$svg = SVG(containerDOM.id)
             .size(containerDOM.getBoundingClientRect().width, containerDOM.getBoundingClientRect().height);
 
         // Add a class to the containerDOM to signify that we've initialized in it
         containerDOM.className += ((containerDOM.className.length) ? " " : "") + "orgzchart";
 
-        root = new Tree(this, null, $svg, config, data);
-        initializeSubTree(root);
+        this.root = new Tree(this, null, this.$svg, config, data);
+        initializeSubTree(this.root);
 
         // Render ourselves in the SVG DOM
         this.render();
+    };
+
+    function setupEvents() {
+        enablePan(this.$svg.node);
     };
 
     /* Performs steps that a new subtree must undergo in order to be added to the DOM.
