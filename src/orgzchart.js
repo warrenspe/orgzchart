@@ -21,7 +21,8 @@
 
         3. String:
             Inputs in config:
-                data - (Required) A string which maps to a URL to load the data from.  What is returned should be
+                data - (Required) A string which maps to a URL to load the data from.  What is returned should be in
+                       one of the two formats described above.
 
     Inputs: containerDOM    - A dom element (typically div) to initialize the chart within.
             data            - The data to initialize the OrgzChart with (See above).
@@ -40,9 +41,7 @@
     }
 */
 
-// Have an automatic routine that checks height/width of content and updates the SVG's based on that TODO
 // TODO hover node effects; maybe show route up above parent to root
-// TODO rename Tree -> TreeNode
 
 import 'promise-polyfill/src/polyfill';
 import './dependencies/svg.min.js';
@@ -147,11 +146,13 @@ window.OrgzChart = (function(containerDOM, data, config) {
 
     function setupEvents() {
         enablePan(this.$svg.node);
+        enableZoom(containerDOM, this.$svg.node);
     };
 
     /* Performs steps that a new subtree must undergo in order to be added to the DOM.
      */
     function initializeSubTree(subTreeRoot) {
+        // Measure the widths of all the nodes at once, then set them all at once so that the browser only reflows once
         subTreeRoot.applyToEntireSubtree(function(node) {
             node.measureNode();
         });
