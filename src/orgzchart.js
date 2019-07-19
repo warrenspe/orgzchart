@@ -43,6 +43,8 @@
 
 // TODO hover node effects; maybe show route up above parent to root
 
+import './sass/orgzchart.scss';
+import 'core-js/stable';
 import 'promise-polyfill/src/polyfill';
 import './dependencies/svg.min.js';
 import './dependencies/svg.foreignobject.js';
@@ -145,8 +147,8 @@ window.OrgzChart = (function(containerDOM, data, config) {
     };
 
     function setupEvents() {
-        enablePan(this.$svg.node);
-        enableZoom(containerDOM, this.$svg.node);
+        enablePan.call(this, this.$svg.node);
+        enableZoom.call(this, containerDOM, this.$svg.node);
     };
 
     /* Performs steps that a new subtree must undergo in order to be added to the DOM.

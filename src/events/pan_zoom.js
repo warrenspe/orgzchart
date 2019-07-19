@@ -1,5 +1,3 @@
-import lazy from './lazy.js'; // TODO can remove?
-
 function _updateTransform(el, translateX, translateY, scale) {
     if (translateX !== undefined) {
         el.dataset["translateX"] = translateX;
@@ -81,15 +79,70 @@ function enableZoom(container, toScale) {
         maxZoom = 10, // TODO config
         minZoom = .01; // TODO config
 
+//    function zoom(e) {
+//        // If we're not scrolling vertically, do nothing
+//        if (!e.deltaY) {
+//            return;
+//        }
+//
+//        // Calculate how much we will be scrolled next
+//        var direction = (e.deltaY > 0) ? -1 : 1,
+//            delta = zoomStep * currentZoom * direction,
+//            nextZoom = Math.max(Math.min(currentZoom + delta, maxZoom), minZoom);
+//
+//        // Record where the cursor is relative to the bounds of the chart so that we can retain that post zoom
+//        // This gives us a zoom-in effect similar to that of google earth where the map zooms in where your cursor
+//        // is positioned
+//        var svgBounds = toScale.getBoundingClientRect(),
+//            cursorPositionPercentX = (e.pageX - svgBounds.left) / (svgBounds.right - svgBounds.left),
+//            cursorPositionPercentY = (e.pageY - svgBounds.top) / (svgBounds.bottom - svgBounds.top);
+//
+//        _updateTransform(toScale, undefined, undefined, currentZoom);
+//        currentZoom = nextZoom;
+//
+//        svgBounds = toScale.getBoundingClientRect();
+//        var pixelsToSameX = (svgBounds.right - svgBounds.left) * cursorPositionPercentX,
+//            actualPositionOfPreviousX = svgBounds.left + pixelsToSameX,
+//            offsetX = e.pageX - actualPositionOfPreviousX,
+//            pixelsToSameY = (svgBounds.bottom - svgBounds.top) * cursorPositionPercentY,
+//            actualPositionOfPreviousY = svgBounds.top + pixelsToSameY,
+//            offsetY = e.pageY - actualPositionOfPreviousY;
+//
+//        _updateTransform(toScale, offsetX, offsetY);
+//    }
+
     function zoom(e) {
+        // If we're not scrolling vertically, do nothing
         if (!e.deltaY) {
             return;
-        } // TODO translate as well as we zoom to scroll in on certain positions
+        }
 
+        // Calculate how much we will be scrolled next
         var direction = (e.deltaY > 0) ? -1 : 1,
-            delta = zoomStep * currentZoom * direction
-        currentZoom = Math.max(Math.min(currentZoom + delta, maxZoom), minZoom);
-        _updateTransform(toScale, undefined, undefined, currentZoom);
+            delta = zoomStep * currentZoom * direction,
+            nextZoom = Math.max(Math.min(currentZoom + delta, maxZoom), minZoom);
+
+        // Record where the cursor is relative to the bounds of the chart so that we can retain that post zoom
+        // This gives us a zoom-in effect similar to that of google earth where the map zooms in where your cursor
+        // is positioned
+        var svgBounds = toScale.getBoundingClientRect(),
+            cursorPositionPercentX = (e.pageX - svgBounds.left) / (svgBounds.right - svgBounds.left),
+            cursorPositionPercentY = (e.pageY - svgBounds.top) / (svgBounds.bottom - svgBounds.top);
+
+        _updateTransform(toScale, undefined, undefined, nextZoom);
+        currentZoom = nextZoom;
+
+        return
+
+        svgBounds = toScale.getBoundingClientRect();
+        var pixelsToSameX = (svgBounds.right - svgBounds.left) * cursorPositionPercentX,
+            actualPositionOfPreviousX = svgBounds.left + pixelsToSameX,
+            offsetX = e.pageX - actualPositionOfPreviousX,
+            pixelsToSameY = (svgBounds.bottom - svgBounds.top) * cursorPositionPercentY,
+            actualPositionOfPreviousY = svgBounds.top + pixelsToSameY,
+            offsetY = e.pageY - actualPositionOfPreviousY;
+
+        _updateTransform(toScale, offsetX, offsetY);
     }
 
     container.addEventListener("wheel", zoom, false);
