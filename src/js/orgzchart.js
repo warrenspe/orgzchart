@@ -37,13 +37,17 @@
                         title - A string containing the position title of the user identified by the object
 
                 childrenAttr, parentAttr, nodeIdAttr - See above.
+                pan - A boolean (default True) indicating whether or not the chart should be pannable.
+                zoom - A boolean (default True) indicating whether or not the chart should be zoomable.
+                minZoom - A number indicating the minimum scaling to apply to the chart.  Default: .01
+                maxZoom - A number indicating the maximum scaling to apply to the chart.  Default: 10
             }
     }
 */
 
 // TODO hover node effects; maybe show route up above parent to root
 
-import './sass/orgzchart.scss';
+import '../sass/orgzchart.scss';
 import 'core-js/stable';
 import 'promise-polyfill/src/polyfill';
 import './dependencies/svg.min.js';
@@ -55,8 +59,26 @@ import {enablePan, enableZoom} from './events/pan_zoom.js';
 
 
 window.OrgzChart = (function(containerDOM, data, config) {
+    // Defaults for configuration directives
+    this.defaults = {
+        childrenAttr: "children",
+        nodeHeight: 60,
+        verticalPadding: 35,
+        horizontalPadding: 5,
+        parentAttr: "parent",
+        nodeIdAttr: "id",
+        createNode: createNode,
+        pan: true,
+        zoom: true,
+        minZoom: .01,
+        maxZoom: 10
+    };
+    // Internal variables which should not be used outside of this routine
+    this._internal = {};
+
     this.$svg = null;
     this.root = null;
+    this.config = null;
 
     this.render = function() {
         this.root.render();
@@ -73,7 +95,7 @@ window.OrgzChart = (function(containerDOM, data, config) {
 
     /* Default function which is called to create nodes for the chart
      */
-    this.createNode = function(nodeData) {
+    function createNode(nodeData) {
         var $nodeContainer = document.createElement("div"),
             $nameContainer = document.createElement("div"),
             $titleContainer = document.createElement("div");
@@ -102,28 +124,18 @@ window.OrgzChart = (function(containerDOM, data, config) {
         $titleContainer.style.fontWeight = "bold";
 
         return $nodeContainer;
-    }.bind(this);
-
-    this.defaults = {
-        childrenAttr: "children",
-        nodeHeight: 60,
-        verticalPadding: 35,
-        horizontalPadding: 5,
-        parentAttr: "parent",
-        nodeIdAttr: "id",
-        createNode: this.createNode
-    };
+    }
 
     function init() {
         if (!(containerDOM instanceof Element)) {
             throw "First parameter to OrgzChart must be a DOM element.  Got " + containerDOM + " instead";
         }
 
-        config = _makeInternalConfig.call(this, config || {});
+        _makeInternalConfig.call(this, config || {});
 
-        convertData(data, config)
+        convertData(data, this.config)
             .then((data) => {
-                setupTree.call(this, data, config);
+                setupTree.call(this, data);
                 setupEvents.call(this);
             })
             .catch((error) => {
@@ -131,7 +143,7 @@ window.OrgzChart = (function(containerDOM, data, config) {
             });
     };
 
-    function setupTree(data, config) {
+    function setupTree(data) {
         // Create an SVG object inside out containerDOM
         this.$svg = SVG(containerDOM.id)
             .size(containerDOM.getBoundingClientRect().width, containerDOM.getBoundingClientRect().height);
@@ -139,7 +151,7 @@ window.OrgzChart = (function(containerDOM, data, config) {
         // Add a class to the containerDOM to signify that we've initialized in it
         containerDOM.className += ((containerDOM.className.length) ? " " : "") + "orgzchart";
 
-        this.root = new Tree(this, null, this.$svg, config, data);
+        this.root = new Tree(this, null, this.$svg, this.config, data);
         initializeSubTree(this.root);
 
         // Render ourselves in the SVG DOM
@@ -147,8 +159,12 @@ window.OrgzChart = (function(containerDOM, data, config) {
     };
 
     function setupEvents() {
-        enablePan.call(this, this.$svg.node);
-        enableZoom.call(this, containerDOM, this.$svg.node);
+        if (this.config.pan) {
+            enablePan.call(this, containerDOM, this.$svg.node);
+        }
+        if (this.config.zoom) {
+            enableZoom.call(this, containerDOM, this.$svg.node);
+        }
     };
 
     /* Performs steps that a new subtree must undergo in order to be added to the DOM.
@@ -184,7 +200,7 @@ window.OrgzChart = (function(containerDOM, data, config) {
             throw `createNode must be passed as a function, not ${config.createNode}`;
         }
 
-        return config;
+        this.config = config;
     };
 
     init.call(this);
