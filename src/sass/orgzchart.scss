@@ -1,5 +1,35 @@
 .orgzchart {
     svg {
         transform-origin: 0px 0px;
+
+        .parent-toggle:hover, .children-toggle:hover {
+            fill: red;
+            cursor: pointer;
+        }
+    }
+
+    .default-node {
+        &.node {
+            display: inline-block;
+            border: 1px solid lightgray;
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .title {
+            text-align: center;
+            padding: 4px;
+            background-color: lightgray;
+            font-weight: bold;
+        }
+
+        .name {
+            text-align: center;
+            padding: 4px;
+
+            .has-children {
+                padding-bottom: 15px;
+            }
+        }
     }
 }

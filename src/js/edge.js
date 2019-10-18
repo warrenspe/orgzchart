@@ -1,3 +1,7 @@
+/*  File which is used to create "edges" of nodes (not links between nodes) in a tree, used to space nodes
+ *  out in a manner which causes them to take up minimal space while not overlapping.
+ */
+
 import PositionMemoizer from './position_memoizer.js';
 
 /*  Object which contains a series of nodes making up the edge of a subtree (or series of subtrees).

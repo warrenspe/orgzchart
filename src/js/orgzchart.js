@@ -31,7 +31,8 @@
                 verticalPadding - A number containing the amount of space between parent and child nodes.
                 horizontalPadding - A number containing the minimum amount of space between child nodes
                 createNode  - A function which when passed an object containing the data for the node to create, returns
-                              an HTMLElement to render within the orgzchart.
+                              an HTMLElement to render within the orgzchart.  The `this` parameter will be set to the
+                              Tree instance which is creating the node.
                     The default createNode function expects the following attributes to be present in each data object:
                         name  - A string containing the name of the attribute on the object
                         title - A string containing the position title of the user identified by the object
@@ -41,6 +42,9 @@
                 zoom - A boolean (default True) indicating whether or not the chart should be zoomable.
                 minZoom - A number indicating the minimum scaling to apply to the chart.  Default: .01
                 maxZoom - A number indicating the maximum scaling to apply to the chart.  Default: 10
+                nodeToggles - A boolean (default True) indicating whether the nodes should be able to expand/hide the
+                              relatives of the node
+                // TODO default levels expanded
             }
     }
 */
@@ -56,6 +60,7 @@ import './dependencies/svg.foreignobject.js';
 import Tree from './tree.js';
 import convertData from './data_convert.js';
 import {enablePan, enableZoom} from './events/pan_zoom.js';
+import {injectNodeToggles, createNode} from './create_node.js';
 
 
 window.OrgzChart = (function(containerDOM, data, config) {
@@ -71,7 +76,8 @@ window.OrgzChart = (function(containerDOM, data, config) {
         pan: true,
         zoom: true,
         minZoom: .01,
-        maxZoom: 10
+        maxZoom: 10,
+        nodeToggles: true
     };
     // Internal variables which should not be used outside of this routine
     this._internal = {};
@@ -92,39 +98,6 @@ window.OrgzChart = (function(containerDOM, data, config) {
 
         this.$svg.size(contentBox.w + 5, contentBox.h + 5);
     }.bind(this);
-
-    /* Default function which is called to create nodes for the chart
-     */
-    function createNode(nodeData) {
-        var $nodeContainer = document.createElement("div"),
-            $nameContainer = document.createElement("div"),
-            $titleContainer = document.createElement("div");
-
-        // DOM layout & classes
-        $nodeContainer.appendChild($titleContainer);
-        $nodeContainer.appendChild($nameContainer);
-        $nodeContainer.className = "node";
-        $titleContainer.className = "title";
-        $nameContainer.className = "name";
-
-        // Set name/title
-        $titleContainer.innerHTML = nodeData["title"] || "";
-        $nameContainer.innerHTML = nodeData["name"] || "";
-
-        // Styles
-        $nodeContainer.style.display = "inline-block";
-        $nodeContainer.style.border = "1px solid lightgray";
-        $nodeContainer.style.borderRadius = "2px";
-
-        $nameContainer.style.textAlign = "center";
-        $nameContainer.style.padding = "4px";
-        $titleContainer.style.textAlign = "center";
-        $titleContainer.style.padding = "4px";
-        $titleContainer.style.backgroundColor = "lightgray";
-        $titleContainer.style.fontWeight = "bold";
-
-        return $nodeContainer;
-    }
 
     function init() {
         if (!(containerDOM instanceof Element)) {
@@ -205,4 +178,8 @@ window.OrgzChart = (function(containerDOM, data, config) {
 
     init.call(this);
     return this;
-}.bind({}));
+});
+
+window.OrgzChart.prototype.functions = {
+    createNode: createNode
+};

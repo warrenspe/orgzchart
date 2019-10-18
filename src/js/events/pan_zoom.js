@@ -57,7 +57,7 @@ function enablePan(container, toPan) {
         // Check if the mouse is not currently pressed; this can occur if the mouseup happened while off the browser
         // If so, stop panning
         if (!(e.buttons & 1)) {
-            stopPan();
+            stopPan.call(this);
             return;
         }
 

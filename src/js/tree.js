@@ -1,3 +1,6 @@
+/*  Contains the definition of a Tree object which consists of a parent node and zero or more children trees
+ */
+
 import * as Edges from './edge.js';
 
 function Tree(chart, parent, parentElement, config, data) {
@@ -10,6 +13,7 @@ function Tree(chart, parent, parentElement, config, data) {
     this.leaves = new Set();
     this.visible = true;
     this.level = (parent !== null) ? parent.level + 1 : 0;
+    this.toggles = {parent: null, children: null};
 
     // Left position relative to parent container
     this.rel_left = 0;
@@ -40,9 +44,6 @@ function Tree(chart, parent, parentElement, config, data) {
 
     this.id = this.container.id();
 
-    // Render the foreign element for this node
-    this.makeNode();
-
     // Add children if we have them
     var children = data[config["childrenAttr"]];
     if (children && children.length) {
@@ -52,6 +53,9 @@ function Tree(chart, parent, parentElement, config, data) {
     } else {
         this.addLeaf(this);
     }
+
+    // Render the foreign element for this node
+    this.makeNode();
 };
 
 /*  Applies a function to this node and all of children below this node
@@ -104,20 +108,33 @@ Tree.prototype.makeNode = function() {
     // Create a foreign object to store the node
     this.node = this.container.foreignObject();
     // Create the node to be stored in the foreign object
-    this.innerNode = this.config.createNode(this.data);
+    this.innerNode = this.config.createNode.call(this, this.data);
     // Set the foreign object's size to 0 to force the node's scrollWidth to reflect its desired width
     this.node.size(0, 0);
     // Add the node to the foreign object
     this.node.appendChild(this.innerNode);
+
+    // Create node toggles if we've been asked to
+    if (this.config.nodeToggles) {
+        if (this.parent) {
+            this.toggles.parent = this.container.polygon("0,10 5,0 10,10")
+                .addClass("parent-toggle");
+        }
+        if (this.children.length) {
+            this.toggles.children = this.container.polygon("0,0 5,10 10,0")
+                .addClass("children-toggle");
+        }
+    }
 };
+
 /* Next we measure the desired width of the node that we added, without making any changes to the DOM which
  * would invalidate the layout and cause the next read to trigger a reflow
  */
 Tree.prototype.measureNode = function() {
-    // Store the target width on the node object for lack of a better place
     this.nodeWidth = this.innerNode.scrollWidth + (this.innerNode.offsetWidth - this.innerNode.clientWidth);
     this.nodeHeight = this.innerNode.scrollHeight + (this.innerNode.offsetHeight - this.innerNode.clientHeight);
 };
+
 /* Finally, we set all the widths of all the nodes in a row, without doing any reads that would trigger a reflow
  */
 Tree.prototype.setNodeWidth = function() {
@@ -267,6 +284,20 @@ Tree.prototype.renderChildren = function() {
 Tree.prototype.renderNode = function() {
     this.nodeOffsetLeft = Math.max(0, (this.width() / 2) - (this.nodeWidth / 2))
     this.node.x(this.nodeOffsetLeft);
+
+    // Update the positions of the parent/child toggles
+    if (this.toggles.parent) {
+        this.toggles.parent.move(
+            this.nodeOffsetLeft + (this.nodeWidth / 2) - 5,
+            -10
+        );
+    }
+    if (this.toggles.children) {
+        this.toggles.children.move(
+            this.nodeOffsetLeft + (this.nodeWidth / 2) - 5,
+            this.nodeHeight
+        );
+    }
 }
 
 Tree.prototype.renderBars = function() {
