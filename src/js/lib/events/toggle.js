@@ -1,4 +1,4 @@
-import {showElement, hideElement, relayoutToVisibleRoot} from '../utils.js';
+import {showElement, hideElement} from '../utils.js';
 
 /*  Toggles visibility of the parent of a given node
  *
@@ -18,7 +18,7 @@ function toggleChildren() {
         child.toggleVisibility();
     }.bind(this));
     this._renderBars();
-    relayoutToVisibleRoot(this);
+    this.relayoutToVisibleRoot();
 }
 
 export {toggleParent, toggleChildren};

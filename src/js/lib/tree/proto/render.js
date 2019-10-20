@@ -12,12 +12,16 @@ import {showElement, hideElement} from '../../utils.js';
  *
  *  Inputs: node - The the node to redraw.
  */
-Tree.prototype.renderTree = function(node) {
-    var visibleChildren = node.getVisibleChildren();
+Tree.prototype.render = function() {
+    var visibleChildren = this.getVisibleChildren();
     for (var i = 0; i < visibleChildren.length; i++) {
-        renderTree(visibleChildren[i]);
+        visibleChildren[i].render();
     }
-    node.render();
+    if (this.visible) {
+        this._positionChildren();
+        this._renderNode();
+        this._renderBars();
+    }
 }
 
 
@@ -35,17 +39,6 @@ Tree.prototype.relayoutToVisibleRoot = function(node) {
     }
 }
 
-
-
-/*  Renders the subtree, its children, and the bars above its node (from its parent)
- */
-Tree.prototype.render = function() {
-    if (this.visible) {
-        this._positionChildren();
-        this._renderNode();
-        this._renderBars();
-    }
-};
 
 Tree.prototype._positionChildren = function() {
     var visibleChildren = this.getVisibleChildren(),

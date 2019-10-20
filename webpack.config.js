@@ -2,7 +2,7 @@ const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 module.exports = {
-    entry: './src/js/orgzchart.js',
+    entry: './src/js/lib/orgzchart.js',
     output: {
         filename: 'orgzchart.js',
         path: path.resolve(__dirname, 'dist')

@@ -31,4 +31,4 @@ function hideElement(element) {
     element.style("visibility", "collapse");
 }
 
-export { fetchAjax, showElement, hideElement, renderTree, relayoutToVisibleRoot };
+export { fetchAjax, showElement, hideElement };

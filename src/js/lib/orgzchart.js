@@ -51,12 +51,18 @@
 
 // TODO hover node effects; maybe show route up above parent to root
 
-import '../sass/orgzchart.scss';
+import '../../sass/orgzchart.scss';
 import 'core-js/stable';
 import 'promise-polyfill/src/polyfill';
-import './dependencies/svg.min.js';
-import './dependencies/svg.foreignobject.js';
+import '../dependencies/svg.min.js';
+import '../dependencies/svg.foreignobject.js';
 
+
+import './tree/proto/utils.js';
+import './tree/proto/getters.js';
+import './tree/proto/setters.js';
+import './tree/proto/init.js';
+import './tree/proto/render.js';
 import Tree from './tree/tree.js';
 import convertData from './data_convert.js';
 import {enablePan, enableZoom} from './events/pan_zoom.js';
@@ -87,7 +93,7 @@ window.OrgzChart = (function(containerDOM, data, config) {
     this.config = null;
 
     this.render = function() {
-        this.root.renderTree();
+        this.root.render();
         this.resize();
     }.bind(this);
 

@@ -1,11 +1,6 @@
 /*  Contains the definition of a Tree object which consists of a parent node and zero or more children trees
  */
 
-import './tree/proto/utils.js';
-import './tree/proto/getters.js';
-import './tree/proto/setters.js';
-import './tree/proto/init.js';
-import './tree/proto/render.js';
 import {showElement, hideElement} from '../utils.js';
 
 function Tree(chart, parent, parentElement, config, data) {
@@ -67,7 +62,7 @@ function Tree(chart, parent, parentElement, config, data) {
 /*  Sets this subtree to either be visible or invisible.
     If we're hiding ourselves, we also hide any subtree children of ours.
 */
-Tree.prototype.setVisibility = function(visible) {
+Tree.prototype.setVisibility = function(visible) { // TODO move/refactor this and below
     if (visible == this.visible) {
         return;
     }
