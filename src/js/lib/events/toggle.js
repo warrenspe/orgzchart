@@ -5,7 +5,12 @@ import {showElement, hideElement} from '../utils.js';
  *  The `this` parameter should be set to the node whose parent is being toggled.
  */
 function toggleParent() {
-    // TODO
+    if (this.hasVisibleParent()) {
+        this.hideParent();
+    } else {
+        this.revealParent();
+    }
+    this.relayoutToVisibleRoot();
 }
 
 /*  Toggles visibility of the children of a given node
@@ -13,11 +18,11 @@ function toggleParent() {
  *  The `this` parameter should be set to the node whose children are being toggled.
  */
 function toggleChildren() {
-    // TODO - recursively re-render nodes up to visible root
-    this.children.forEach(function(child) {
-        child.toggleVisibility();
-    }.bind(this));
-    this._renderBars();
+    if (this.hasVisibleChildren()) {
+        this.hideChildren();
+    } else {
+        this.revealChildren();
+    }
     this.relayoutToVisibleRoot();
 }
 

@@ -93,7 +93,7 @@ window.OrgzChart = (function(containerDOM, data, config) {
     this.config = null;
 
     this.render = function() {
-        this.root.render();
+        this.root.recursiveRender();
         this.resize();
     }.bind(this);
 

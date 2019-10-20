@@ -59,48 +59,4 @@ function Tree(chart, parent, parentElement, config, data) {
 };
 
 
-/*  Sets this subtree to either be visible or invisible.
-    If we're hiding ourselves, we also hide any subtree children of ours.
-*/
-Tree.prototype.setVisibility = function(visible) { // TODO move/refactor this and below
-    if (visible == this.visible) {
-        return;
-    }
-
-    this.visible = visible;
-
-    if (!visible) {
-        for (var i = 0; i < this.children.length; i++) {
-            this.children[i].setVisibility(false);
-        }
-        hideElement(this.container);
-        hideElement(this.upperBar);
-        hideElement(this.lowerBars);
-
-    } else {
-        showElement(this.container);
-        if (this.hasVisibleParent()) {
-            showElement(this.upperBar);
-        }
-        if (this.hasVisibleChildren()) {
-            showElement(this.lowerBars);
-        }
-    }
-
-    if (!this.hasVisibleChildren() && this.parent) {
-        if (visible) {
-            this.parent.addLeaf(this);
-        } else {
-            this.parent.removeLeaf(this);
-        }
-    }
-};
-
-/*  Toggles the visibility of this tree based on its current visibility
- */
-Tree.prototype.toggleVisibility = function() {
-    this.setVisibility(!this.visible);
-};
-
-
 export default Tree;

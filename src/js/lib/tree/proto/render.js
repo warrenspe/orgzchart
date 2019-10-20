@@ -6,21 +6,19 @@ import Tree from '../tree.js';
 import {showElement, hideElement} from '../../utils.js';
 
 
-/*  Recursively re-renders an entire tree beneath and including a given root node
+/*  Recursively re-renders an entire tree beneath and including the current node.
  *  Used to completely redraw a subtree.
  *  (relatively expensive)
  *
  *  Inputs: node - The the node to redraw.
  */
-Tree.prototype.render = function() {
+Tree.prototype.recursiveRender = function() {
     var visibleChildren = this.getVisibleChildren();
     for (var i = 0; i < visibleChildren.length; i++) {
-        visibleChildren[i].render();
+        visibleChildren[i].recursiveRender();
     }
     if (this.visible) {
-        this._positionChildren();
-        this._renderNode();
-        this._renderBars();
+        this.render();
     }
 }
 
@@ -31,13 +29,26 @@ Tree.prototype.render = function() {
  *
  *  Inputs: note - The start node to perform the relayout from.
  */
-Tree.prototype.relayoutToVisibleRoot = function(node) {
-    var current = node;
+Tree.prototype.relayoutToVisibleRoot = function() {
+    var current = this;
     while (current && current.visible) {
-        current._positionChildren();
+        current.render();
         current = current.parent;
     }
-}
+};
+
+
+/*  Renders a node and positions its children beneath it.
+ *
+ *  Inputs: node - The the node to redraw.
+ */
+Tree.prototype.render = function() {
+    if (this.visible) {
+        this._positionChildren();
+        this._renderNode();
+        this._renderBars();
+    }
+};
 
 
 Tree.prototype._positionChildren = function() {
