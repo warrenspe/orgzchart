@@ -57,9 +57,8 @@ import 'promise-polyfill/src/polyfill';
 import './dependencies/svg.min.js';
 import './dependencies/svg.foreignobject.js';
 
-import Tree from './tree.js';
+import Tree from './tree/tree.js';
 import convertData from './data_convert.js';
-import {renderTree} from './utils.js';
 import {enablePan, enableZoom} from './events/pan_zoom.js';
 import {injectNodeToggles, createNode} from './create_node.js';
 
@@ -88,7 +87,7 @@ window.OrgzChart = (function(containerDOM, data, config) {
     this.config = null;
 
     this.render = function() {
-        renderTree(this.root);
+        this.root.renderTree();
         this.resize();
     }.bind(this);
 
