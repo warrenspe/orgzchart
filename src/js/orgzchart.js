@@ -59,6 +59,7 @@ import './dependencies/svg.foreignobject.js';
 
 import Tree from './tree.js';
 import convertData from './data_convert.js';
+import {renderTree} from './utils.js';
 import {enablePan, enableZoom} from './events/pan_zoom.js';
 import {injectNodeToggles, createNode} from './create_node.js';
 
@@ -87,7 +88,7 @@ window.OrgzChart = (function(containerDOM, data, config) {
     this.config = null;
 
     this.render = function() {
-        this.root.render();
+        renderTree(this.root);
         this.resize();
     }.bind(this);
 

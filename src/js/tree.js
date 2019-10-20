@@ -2,6 +2,8 @@
  */
 
 import * as Edges from './edge.js';
+import {showElement, hideElement} from './utils.js';
+import {toggleParent, toggleChildren} from './events/toggle.js';
 
 function Tree(chart, parent, parentElement, config, data) {
     this.chart = chart;
@@ -78,31 +80,33 @@ Tree.prototype.move = function(left) {
     this.container.x(left);
 };
 
-/* Moves the tree element within its parent's childContainer relative to its current position
+/*  Moves the tree element within its parent's childContainer relative to its current position
  */
 Tree.prototype.moveDelta = function(left) {
     this.move(left + this.rel_left);
 };
 
-/* Calculates the width of this tree (or more specifically, of all its children
+/*  Calculates the width of this tree (or more specifically, of all its children
  */
 Tree.prototype.width = function() {
     // Calculate the element which is furthest to the right within this group
     var maxRight = 0,
         minLeft = 0;
 
-    for (var i = 0; i < this.children.length; i++) {
-        maxRight = Math.max(maxRight, this.children[i].rel_left + this.children[i].width());
-        minLeft = Math.min(minLeft, this.children[i].rel_left);
+    if (this.hasVisibleChildren()) {
+        for (var i = 0; i < this.children.length; i++) {
+            maxRight = Math.max(maxRight, this.children[i].rel_left + this.children[i].width());
+            minLeft = Math.min(minLeft, this.children[i].rel_left);
+        }
     }
 
     return Math.max(minLeft + maxRight, this.nodeWidth);
 };
 
 
-/* Creates a foreignobject with a nested HTML object inside for rendering the visible contents of the node
- * Note: We create the root node in three steps; this function is the first of the three steps to minimize
- *       document reflows. This is the first of the three, where we create the elements and add them to the DOM.
+/*  Creates a foreignobject with a nested HTML object inside for rendering the visible contents of the node
+ *  Note: We create the root node in three steps; this function is the first of the three steps to minimize
+ *        document reflows. This is the first of the three, where we create the elements and add them to the DOM.
  */
 Tree.prototype.makeNode = function() {
     // Create a foreign object to store the node
@@ -118,30 +122,32 @@ Tree.prototype.makeNode = function() {
     if (this.config.nodeToggles) {
         if (this.parent) {
             this.toggles.parent = this.container.polygon("0,10 5,0 10,10")
-                .addClass("parent-toggle");
+                .addClass("parent-toggle")
+                .on("click", toggleParent, this);
         }
         if (this.children.length) {
             this.toggles.children = this.container.polygon("0,0 5,10 10,0")
-                .addClass("children-toggle");
+                .addClass("children-toggle")
+                .on("click", toggleChildren, this);
         }
     }
 };
 
-/* Next we measure the desired width of the node that we added, without making any changes to the DOM which
- * would invalidate the layout and cause the next read to trigger a reflow
+/*  Next we measure the desired width of the node that we added, without making any changes to the DOM which
+ *  would invalidate the layout and cause the next read to trigger a reflow
  */
 Tree.prototype.measureNode = function() {
     this.nodeWidth = this.innerNode.scrollWidth + (this.innerNode.offsetWidth - this.innerNode.clientWidth);
     this.nodeHeight = this.innerNode.scrollHeight + (this.innerNode.offsetHeight - this.innerNode.clientHeight);
 };
 
-/* Finally, we set all the widths of all the nodes in a row, without doing any reads that would trigger a reflow
+/*  Finally, we set all the widths of all the nodes in a row, without doing any reads that would trigger a reflow
  */
 Tree.prototype.setNodeWidth = function() {
     this.node.size(this.nodeWidth, this.config.nodeHeight);
 };
 
-/* Adds children of this Tree.
+/*  Adds children of this tree.
 */
 Tree.prototype.addChildren = function(childrenToMake) {
     // Create subtrees based on the children in data
@@ -152,8 +158,16 @@ Tree.prototype.addChildren = function(childrenToMake) {
     // TODO cost algorithm for spacing out the various subtrees
 };
 
-/* Sets this subtree to either be visible or invisible.
-   If we're hiding ourselves, we also hide any subtree children of ours.
+Tree.prototype.hasVisibleChildren = function() {
+    return this.children.length && this.children[0].visible;
+};
+
+Tree.prototype.hasVisibleParent = function() {
+    return this.parent && this.parent.visible;
+};
+
+/*  Sets this subtree to either be visible or invisible.
+    If we're hiding ourselves, we also hide any subtree children of ours.
 */
 Tree.prototype.setVisibility = function(visible) {
     if (visible == this.visible) {
@@ -166,47 +180,59 @@ Tree.prototype.setVisibility = function(visible) {
         for (var i = 0; i < this.children.length; i++) {
             this.children[i].setVisibility(false);
         }
-        this.container.style("visibility", "collapse");
+        hideElement(this.container);
+        hideElement(this.upperBar);
+        hideElement(this.lowerBars);
+
     } else {
-        this.container.style("visibility", "visible");
+        showElement(this.container);
+        if (this.hasVisibleParent()) {
+            showElement(this.upperBar);
+        }
+        if (this.hasVisibleChildren()) {
+            showElement(this.lowerBars);
+        }
     }
 
-    if (this.children.length == 0 && this.parent) {
+    if (!this.hasVisibleChildren() && this.parent) {
         if (visible) {
-            this.parent.addLef(this);
+            this.parent.addLeaf(this);
         } else {
             this.parent.removeLeaf(this);
         }
     }
-}
+};
 
-/* Returns an array of all the children of this subtree which are visible
+/*  Toggles the visibility of this tree based on its current visibility
+ */
+Tree.prototype.toggleVisibility = function() {
+    this.setVisibility(!this.visible);
+};
+
+/*  Toggles the visibility of our children
+
+/*  Returns an array of all the children of this subtree which are visible
  */
 Tree.prototype.getVisibleChildren = function() {
-    return this.children.filter((child) => child.visible);
-};
-
-/* Gets the right-most visible child of this subtree
-*/
-Tree.prototype.getRightMostVisibleChild = function() {
-    for (var i = 0; i < this.children.length; i++) {
-        if (this.children[i].visible) {
-            return this.children[i];
-        }
+    if (this.hasVisibleChildren()) {
+        return this.children;
     }
+    return [];
 };
 
-/* Gets the left-most visible child of this subtree
+/*  Gets the right-most visible child of this subtree
 */
-Tree.prototype.getLeftMostVisibleChild = function() {
-    for (var i = this.children.length - 1; i >= 0; i--) {
-        if (this.children[i].visible) {
-            return this.children[i];
-        }
-    }
+Tree.prototype.getRightMostChild = function() {
+    return this.children[this.children.length - 1];
 };
 
-/* Adds a new leaf to this subtree (and any parents of this subtree)
+/*  Gets the left-most visible child of this subtree
+*/
+Tree.prototype.getLeftMostChild = function() {
+    return this.children[0];
+};
+
+/*  Adds a new leaf to this subtree (and any parents of this subtree)
 */
 Tree.prototype.addLeaf = function(leaf) {
     this.leaves.add(leaf);
@@ -216,7 +242,7 @@ Tree.prototype.addLeaf = function(leaf) {
     }
 };
 
-/* Removes a leaf from this subtree (and any parents of this subtree)
+/*  Removes a leaf from this subtree (and any parents of this subtree)
 */
 Tree.prototype.removeLeaf = function(leaf) {
     this.leaves.delete(leaf);
@@ -226,17 +252,17 @@ Tree.prototype.removeLeaf = function(leaf) {
     }
 };
 
-/* Renders the subtree, its children, and the bars above its node (from its parent)
+/*  Renders the subtree, its children, and the bars above its node (from its parent)
  */
 Tree.prototype.render = function() {
     if (this.visible) {
-        this.renderChildren();
-        this.renderNode();
-        this.renderBars();
+        this._positionChildren();
+        this._renderNode();
+        this._renderBars();
     }
 };
 
-Tree.prototype.renderChildren = function() {
+Tree.prototype._positionChildren = function() {
     var visibleChildren = this.getVisibleChildren(),
         leftEdge,
         rightEdge,
@@ -245,11 +271,6 @@ Tree.prototype.renderChildren = function() {
         targetX;
 
     if (visibleChildren.length) {
-        // Render all of our children first so we know what sort of spacing we need
-        for (var i = 0; i < visibleChildren.length; i++) {
-            visibleChildren[i].render();
-        }
-
         // Space out the children so that they're compact but not overlapping
         [leftEdge, lastRightEdge] = Edges.createEdges(visibleChildren[0]);
 
@@ -281,7 +302,7 @@ Tree.prototype.renderChildren = function() {
     }
 }
 
-Tree.prototype.renderNode = function() {
+Tree.prototype._renderNode = function() {
     this.nodeOffsetLeft = Math.max(0, (this.width() / 2) - (this.nodeWidth / 2))
     this.node.x(this.nodeOffsetLeft);
 
@@ -300,23 +321,23 @@ Tree.prototype.renderNode = function() {
     }
 }
 
-Tree.prototype.renderBars = function() {
+Tree.prototype._renderBars = function() {
     var nodeCenter = this.nodeOffsetLeft + (this.nodeWidth / 2),
         halfVerticalPadding = this.config.verticalPadding / 2;
 
     // Show the parent bar
-    if (this.parent) {
-        this.upperBar.style("visibility", "visible");
+    if (this.hasVisibleParent()) {
+        showElement(this.upperBar);
         this.upperBar.plot([[nodeCenter, 0], [nodeCenter, -halfVerticalPadding]]);
     } else {
-        this.upperBar.style("visibility", "collapse");
+        hideElement(this.upperBar);
     }
 
-    if (this.children.some((child) => child.visible)) {
-        this.lowerBars.style("visibility", "visible");
+    if (this.hasVisibleChildren()) {
+        showElement(this.lowerBars);
         // Update the plot of the child bars so that it extends to its children
-        var minChild = this.getLeftMostVisibleChild(),
-            maxChild = this.getRightMostVisibleChild(),
+        var minChild = this.getLeftMostChild(),
+            maxChild = this.getRightMostChild(),
             minContainerX = minChild.rel_left + minChild.nodeOffsetLeft + (minChild.nodeWidth / 2),
             maxContainerX = maxChild.rel_left + maxChild.nodeOffsetLeft + (maxChild.nodeWidth / 2);
 
@@ -331,7 +352,7 @@ Tree.prototype.renderBars = function() {
             [maxContainerX, halfVerticalPadding + this.config.nodeHeight]
         ]);
     } else {
-        this.lowerBars.style("visibility", "collapse");
+        hideElement(this.lowerBars);
     }
 }
 
