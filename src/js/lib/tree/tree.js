@@ -12,6 +12,10 @@ function Tree(chart, parent, parentElement, config, data) {
     this.children = [];
     this.leaves = new Set();
     this.visible = true;
+    // Boolean indicating whether or not this node has ever rendered.  If it's hidden by default on load
+    // (defaultRoot is a child or on another branch) and this node is revealed, we will have to call render on it
+    // to set up the positioning for its bars, toggles, etc
+    this.rendered = false;
     this.level = (parent !== null) ? parent.level + 1 : 0;
     this.toggles = {parent: null, children: null};
 
@@ -56,6 +60,13 @@ function Tree(chart, parent, parentElement, config, data) {
 
     // Render the foreign element for this node
     this.makeNode();
+
+    // Check to see if the user has requested for us to be the visible root by default
+    if (config.defaultRoot) {
+        if (data[config.defaultRoot.attrName] === config.defaultRoot.attrValue) {
+            this.chart._internal.defaultRoot = this;
+        }
+    }
 };
 
 

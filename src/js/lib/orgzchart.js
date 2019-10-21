@@ -44,7 +44,11 @@
                 maxZoom - A number indicating the maximum scaling to apply to the chart.  Default: 10
                 nodeToggles - A boolean (default True) indicating whether the nodes should be able to expand/hide the
                               relatives of the node
-                // TODO default levels expanded
+                defaultRoot - An object which if matches a node's data object will cause that node to be set as the
+                              visible root of the tree on load by default.  The object should contain two keys:
+                    * attrName - A string containing the name of an attribute to look for within the node objects
+                    * attrValue - A value to look for on the object under the name given by `attrName`
+                defaultLevels - An integer indicating the number of levels to expand by default
             }
     }
 */
@@ -93,7 +97,7 @@ window.OrgzChart = (function(containerDOM, data, config) {
     this.config = null;
 
     this.render = function() {
-        this.root.recursiveRender();
+        this.root.recursiveRender(this.config.defaultLevels);
         this.resize();
     }.bind(this);
 
@@ -131,7 +135,19 @@ window.OrgzChart = (function(containerDOM, data, config) {
         containerDOM.className += ((containerDOM.className.length) ? " " : "") + "orgzchart";
 
         this.root = new Tree(this, null, this.$svg, this.config, data);
-        initializeSubTree(this.root);
+
+        // Measure the widths of all the nodes at once, then set them all at once so that the browser only reflows once
+        this.root.applyToEntireSubtree(function(node) {
+            node.measureNode();
+        });
+        this.root.applyToEntireSubtree(function(node) {
+            node.setNodeWidth();
+        });
+
+        // Handle loading a particular node by default
+        if (this._internal.defaultRoot) {
+            this._internal.defaultRoot.hideParent();
+        }
 
         // Render ourselves in the SVG DOM
         this.render();
@@ -145,18 +161,6 @@ window.OrgzChart = (function(containerDOM, data, config) {
             enableZoom.call(this, containerDOM, this.$svg.node);
         }
     };
-
-    /* Performs steps that a new subtree must undergo in order to be added to the DOM.
-     */
-    function initializeSubTree(subTreeRoot) {
-        // Measure the widths of all the nodes at once, then set them all at once so that the browser only reflows once
-        subTreeRoot.applyToEntireSubtree(function(node) {
-            node.measureNode();
-        });
-        subTreeRoot.applyToEntireSubtree(function(node) {
-            node.setNodeWidth();
-        });
-    }
 
     function _makeInternalConfig(config) {
         config = Object.assign({}, config || {}, this.defaults);

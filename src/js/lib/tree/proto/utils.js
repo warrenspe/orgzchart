@@ -122,5 +122,10 @@ Tree.prototype.reveal = function() {
         } else {
             showElement(this.lowerBars);
         }
+
+        // If we haven't rendered yet, do it now
+        if (!this.rendered) {
+            this.render();
+        }
     }
 };

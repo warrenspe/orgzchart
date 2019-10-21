@@ -11,6 +11,7 @@ function toggleParent() {
         this.revealParent();
     }
     this.relayoutToVisibleRoot();
+    this.chart.resize();
 }
 
 /*  Toggles visibility of the children of a given node
@@ -24,6 +25,7 @@ function toggleChildren() {
         this.revealChildren();
     }
     this.relayoutToVisibleRoot();
+    this.chart.resize();
 }
 
 export {toggleParent, toggleChildren};

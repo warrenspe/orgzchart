@@ -1,1 +1,8 @@
 - when toggling parent/child, position graph so that the node which was interacted with doesn't move overall on the page
+
+- Currently we create elements for every node in the tree, but only position the ones which are requestd on
+  page load.  Instead, only load nodes for elements which are going to be displayed, then if we reveal previously
+  uncreated nodes generate and position them then
+        This will impact defaultRoot code in orgzchart.js and tree.js
+
+- if defaultnode is given, chart loads below y=0 (if its not given it loads at top of screen)

@@ -10,13 +10,18 @@ import {showElement, hideElement} from '../../utils.js';
  *  Used to completely redraw a subtree.
  *  (relatively expensive)
  *
- *  Inputs: node - The the node to redraw.
+ *  Inputs: maxLevels - (Optional). An integer indicating the number of levels below the root to render
  */
-Tree.prototype.recursiveRender = function() {
-    var visibleChildren = this.getVisibleChildren();
-    for (var i = 0; i < visibleChildren.length; i++) {
-        visibleChildren[i].recursiveRender();
+Tree.prototype.recursiveRender = function(maxLevels) {
+    if (typeof maxLevels !== "number" || maxLevels > 1) {
+        var visibleChildren = this.getVisibleChildren();
+        for (var i = 0; i < visibleChildren.length; i++) {
+            visibleChildren[i].recursiveRender((typeof maxLevels == "number") ?  maxLevels - 1 : undefined);
+        }
+    } else {
+        this.hideChildren();
     }
+
     if (this.visible) {
         this.render();
     }
@@ -44,6 +49,7 @@ Tree.prototype.relayoutToVisibleRoot = function() {
  */
 Tree.prototype.render = function() {
     if (this.visible) {
+        this.rendered = true;
         this._positionChildren();
         this._renderNode();
         this._renderBars();
